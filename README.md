@@ -3,7 +3,7 @@ My custom World Conqueror 2 Mods.
 
 In current mod:
 - Infinite money
-- All missions unlocked (even NATO/WTO, it will appear locked, but just click and they are all open)
+- All missions unlocked, including NATO/WTO, without locked visuals
 - Fixed progress clear after reboot on new Android versions
 - Added progress reset on Commander and Medals (if you want to increase complexity level) - **only on arm64-v8a**
 - You can add your own missions (see patches/add_battle.py)

@@ -3,20 +3,25 @@
 Open every campaign battle in World Conqueror 2 and remove the
 WTO/NATO main-menu gate.
 
-Two binary patches per ABI inside lib/<abi>/libworld-conqueror-2.so:
+Binary patches per ABI inside lib/<abi>/libworld-conqueror-2.so:
 
   1. GUIBattleList::Init — neuter the "this item index >= unlocked
      count → SetEnable(false); locked = 1" branch, so every campaign
      battle (axis / allies / wto / nato) shows up clickable. victory /
      greatvictory thresholds, star counts, and multiplay are untouched.
 
-  2. CMenuState::OnEvent — the WTO/NATO main-menu button checks
+  2. GUIMainMenu::Init — use the already-open visual path for the
+     WTO/NATO main-menu buttons, so the lock icon / disabled dimming are
+     not shown on a fresh profile.
+
+  3. CMenuState::OnEvent — the WTO/NATO main-menu button checks
      axis_played >= axis_total OR allies_played >= allies_total and
      pops up GUILockedWarning ("After axis or allies campaign…") when
      both checks fail. We force the first conditional branch (axis
      check) to take the "open" path unconditionally, so the warning is
-     never constructed. armeabi-v7a in this build has no such gate
-     (LockedWarning ctor is never called) — patch skipped there.
+     never constructed. armeabi-v7a in this build has no OnEvent gate
+     (LockedWarning ctor is never called), but the visual Init gate is
+     still patched there.
 
 Idempotent: re-running on an already-patched library does nothing.
 Refuses to write if the byte pattern at any patch site doesn't match.
@@ -77,6 +82,42 @@ PATCHES: tuple[Patch, ...] = (
         original=bytes.fromhex("0f8f4bffffff"),  # jg  0xbf358
         patched=bytes.fromhex("e94cffffff90"),   # jmp 0xbf358 ; nop
         note="GUIBattleList::Init lock-branch @ bf407",
+    ),
+    # ---- GUIMainMenu::Init — hide WTO/NATO main-menu locked visual ----
+    Patch(
+        abi="arm64-v8a",
+        offset=0xAA16C,
+        original=bytes.fromhex("eb0d0054"),  # b.lt 0xaa328 (try allies, then lock)
+        patched=bytes.fromhex("1f2003d5"),   # nop: fall through to open visuals
+        note="GUIMainMenu::Init WTO/NATO locked visual @ aa16c",
+    ),
+    Patch(
+        abi="armeabi-v7a",
+        offset=0x6D354,
+        original=bytes.fromhex("36da"),  # bge #0x6d3c6
+        patched=bytes.fromhex("36e0"),   # b   #0x6d3c6
+        note="GUIMainMenu::Init WTO/NATO locked visual @ 6d354 (Thumb-2)",
+    ),
+    Patch(
+        abi="armeabi",
+        offset=0x6CC84,
+        original=bytes.fromhex("32da"),  # bge #0x6ccee
+        patched=bytes.fromhex("32e0"),   # b   #0x6ccee
+        note="GUIMainMenu::Init WTO/NATO locked visual @ 6cc84 (Thumb)",
+    ),
+    Patch(
+        abi="x86",
+        offset=0xA1EB0,
+        original=bytes.fromhex("0f8c0a020000"),  # jl 0xa20c0 (try allies, then lock)
+        patched=bytes.fromhex("909090909090"),   # nop x6: fall through to open visuals
+        note="GUIMainMenu::Init WTO/NATO locked visual @ a1eb0",
+    ),
+    Patch(
+        abi="x86_64",
+        offset=0xB2969,
+        original=bytes.fromhex("0f8c01020000"),  # jl 0xb2b70 (try allies, then lock)
+        patched=bytes.fromhex("909090909090"),   # nop x6: fall through to open visuals
+        note="GUIMainMenu::Init WTO/NATO locked visual @ b2969",
     ),
     # ---- CMenuState::OnEvent — WTO/NATO main-menu gate ----
     Patch(
